@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="google-site-verification" content="LsizkA8P0AmycQcfICwrS5ITru606ZkzMSN_TrPbS7U" />
-  <meta name="description" content="Use a free temporary email address and easily send emails with MARC-Tech. Perfect for privacy and testing needs." />
-  <title>Temp Mail + Send - MARC-Tech</title>
+  <title>Send and Receive Emails - MARC-Tech</title>
   <style>
     body { font-family: Arial; background: #f0f0f0; padding: 20px; }
     .email-box, .send-box { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
@@ -13,11 +11,13 @@
     button { background: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; }
     input, textarea { width: 100%; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #ccc; }
     .message { background: #eef; padding: 10px; border-radius: 5px; margin-top: 10px; }
+    iframe { width: 100%; height: 300px; border: none; margin-top: 10px; }
   </style>
 </head>
 <body>
 
-  <h2>Temporary Email (MARC-Tech)</h2>
+  <h2>Send and Receive Emails (MARC-Tech)</h2>
+
   <div class="email-box">
     <p>Your temporary email: <span class="email" id="emailDisplay">loading...</span></p>
     <button onclick="copyEmail()">Copy Email</button>
@@ -51,9 +51,9 @@
     }
 
     function copyEmail() {
-      navigator.clipboard.writeText(tempEmail).then(() => {
-        alert("Email copied!");
-      }).catch(err => alert("Copy error: " + err));
+      navigator.clipboard.writeText(tempEmail)
+        .then(() => alert("Email copied to clipboard!"))
+        .catch(err => alert("Copy error: " + err));
     }
 
     function loadMessages() {
@@ -69,20 +69,38 @@
           container.innerHTML = "<p>No messages received.</p>";
           return;
         }
-        messages.forEach(m => {
-          const div = document.createElement("div");
-          div.className = "message";
-          div.innerHTML = `
-            <p><strong>From:</strong> ${m.from}</p>
-            <p><strong>Subject:</strong> ${m.subject}</p>
-            <p><strong>Content:</strong> ${m.text || "(no content)"}</p>
+
+        messages.forEach(msg => {
+          const msgDiv = document.createElement("div");
+          msgDiv.className = "message";
+          msgDiv.innerHTML = `
+            <p><strong>From:</strong> ${msg.from}</p>
+            <p><strong>Subject:</strong> ${msg.subject}</p>
+            <button onclick="showEmailContent('${msg._id}')">View Full Email</button>
+            <div id="msg-${msg._id}"></div>
           `;
-          container.appendChild(div);
+          container.appendChild(msgDiv);
         });
       })
       .catch(err => {
-        console.error("Mailsac error:", err);
+        console.error("Fetch error:", err);
         alert("Error loading messages.");
+      });
+    }
+
+    function showEmailContent(messageId) {
+      fetch(`https://mailsac.com/api/text/${tempEmail}/${messageId}`, {
+        headers: { 'Mailsac-Key': MAILSAC_KEY }
+      })
+      .then(res => res.text())
+      .then(content => {
+        document.getElementById(`msg-${messageId}`).innerHTML = `
+          <textarea readonly rows="10">${content}</textarea>
+        `;
+      })
+      .catch(err => {
+        console.error("Load content error:", err);
+        alert("Failed to load message content.");
       });
     }
 
@@ -120,15 +138,14 @@
         if (data.success) {
           document.getElementById("sendStatus").innerHTML = "<p style='color:green;'>Email sent successfully!</p>";
         } else {
-          document.getElementById("sendStatus").innerHTML = "<p style='color:red;'>Sending failed: " + (data.message || "Unknown error") + "</p>";
+          document.getElementById("sendStatus").innerHTML = "<p style='color:red;'>Send failed: " + (data.message || "Unknown error") + "</p>";
         }
       })
       .catch(err => {
         console.error("Sending error:", err);
-        document.getElementById("sendStatus").innerHTML = "<p style='color:red;'>Error while sending email.</p>";
+        document.getElementById("sendStatus").innerHTML = "<p style='color:red;'>An error occurred while sending the email.</p>";
       });
     }
   </script>
-
 </body>
 </html>
